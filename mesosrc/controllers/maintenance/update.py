@@ -4,7 +4,7 @@ import datetime
 import socket
 
 from cement.core.controller import expose, CementBaseController
-from utils.exceptions import UnexpectedBehaviour
+from mesosrc.utils.exceptions import UnexpectedBehaviour
 
 
 class MesosMaintenanceUpdateController(CementBaseController):

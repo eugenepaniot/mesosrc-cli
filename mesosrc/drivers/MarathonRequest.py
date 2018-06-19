@@ -1,8 +1,9 @@
 from time import sleep
 from urlparse import urlparse
-import pprint
-from drivers.HTTPRequest import HTTPRequest
-from utils.exceptions import MaxTriesExceeded, OperatorActionRequired
+from pprint import pformat
+
+from mesosrc.drivers.HTTPRequest import HTTPRequest
+from mesosrc.utils.exceptions import MaxTriesExceeded, OperatorActionRequired
 
 
 class MarathonRequest(HTTPRequest):
@@ -12,8 +13,14 @@ class MarathonRequest(HTTPRequest):
     def __init__(self, address, user, password, headers, logger):
         super(MarathonRequest, self).__init__(address, user, password, headers, logger)
 
-        self.leader = self.urlOpenJsonToObject("/v2/leader")['leader']
         self.scheme = urlparse(address).scheme
+        try:
+            self.leader = self.urlOpenJsonToObject("/v2/leader")['leader']
+        except Exception, e:
+            self.logger.warning("Can't initialize marathon leader from address %s: %s" % (self.getAddress(), repr(e)))
+            self.leader = None
+        else:
+            self.logger.debug("Marathon leader successful initialized")
 
     def getAddress(self):
         if self.leader:
@@ -49,7 +56,7 @@ class MarathonRequest(HTTPRequest):
                 sleep(1)
 
         except MaxTriesExceeded as e:
-            self.logger.error("Queue: %s" % pprint.pformat(self.getQueue()))
+            self.logger.error("Queue: %s" % pformat(self.getQueue()))
             rollbackDeploymentId = None
 
             if rollBack:

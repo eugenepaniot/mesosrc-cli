@@ -1,3 +1,6 @@
-mesosrc-cli.conf
+mesosrc.conf
 .idea
 *.pyc
+build/
+dist/
+mesosrc.egg-info/

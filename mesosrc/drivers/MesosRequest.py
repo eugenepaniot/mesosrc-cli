@@ -1,4 +1,4 @@
-from drivers.HTTPRequest import HTTPRequest
+from mesosrc.drivers.HTTPRequest import HTTPRequest
 
 
 class MesosRequest(HTTPRequest):

@@ -4,10 +4,7 @@
 import os
 import traceback
 import urllib2
-
-import colorlog
 import sys
-import tabulate
 
 from cement.core.exc import CaughtSignal
 from cement.ext.ext_colorlog import ColorLogHandler
@@ -24,14 +21,6 @@ from controllers.tasks import MesosTasksBase
 from drivers.MarathonRequest import MarathonRequest
 from drivers.MesosRequest import MesosRequest
 from utils.exceptions import OperatorActionRequired
-
-COMMON_ARGS = [
-    (['--master'],
-     dict(
-         default="http://localhost:5050",
-         help="Mesos master address. (default: %(default)s)"
-     ))
-]
 
 app_config = init_defaults('drivers-cli', 'log.colorlog', 'mesos', 'marathon')
 
@@ -54,23 +43,25 @@ def pre_close(app):
 
 
 def extendAppWMesosMarathon(app):
-    mesos = MesosRequest(address=app.config.get('mesos', 'host'),
-                         user=app.config.get('mesos', 'user'),
-                         password=app.config.get('mesos', 'password'),
-                         headers=None,
-                         logger=app.log,
-                         )
+    try:
+        mesos = MesosRequest(address=app.config.get('mesos', 'host'),
+                             user=app.config.get('mesos', 'user'),
+                             password=app.config.get('mesos', 'password'),
+                             headers=None,
+                             logger=app.log,
+                             )
 
-    marathon = MarathonRequest(address=app.config.get('marathon', 'host'),
-                               user=app.config.get('marathon', 'user'),
-                               password=app.config.get('marathon', 'password'),
-                               headers=None,
-                               logger=app.log,
-                               )
+        marathon = MarathonRequest(address=app.config.get('marathon', 'host'),
+                                   user=app.config.get('marathon', 'user'),
+                                   password=app.config.get('marathon', 'password'),
+                                   headers=None,
+                                   logger=app.log,
+                                   )
 
-    app.extend('mesos', mesos)
-    app.extend('marathon', marathon)
-
+        app.extend('mesos', mesos)
+        app.extend('marathon', marathon)
+    except Exception, e:
+        raise OperatorActionRequired("Can't initialize Mesos or Marathon connections. %s" % repr(e))
 
 class MesosLogHandler(ColorLogHandler):
     class Meta:
@@ -101,7 +92,7 @@ class MesosBaseController(CementBaseController):
 
 class MesosRCCli(CementApp):
     class Meta:
-        label = 'mesosrc-cli'
+        label = 'mesosrc'
         config_defaults = app_config
         arguments_override_config = True
         exit_on_close = True
@@ -124,42 +115,52 @@ class MesosRCCli(CementApp):
         ]
 
         config_files = [
-            "mesosrc-cli.conf"
+            "mesosrc.conf",
+            "/etc/mesosrc/mesosrc.conf",
+            "~/.mesosrc.conf",
+            "~/mesosrc.conf",
+            "~/.mesosrc/mesosrc.conf",
+            "~/.mesosrc/config",
+            "~/.local/etc/mesosrc/mesosrc.conf",
         ]
 
         hooks = [
-            ('post_argument_parsing', extendAppWMesosMarathon),
+            ('pre_run', extendAppWMesosMarathon),
             ('pre_close', pre_close),
         ]
 
 
-with MesosRCCli() as app:
-    try:
-        app.setup()
-        app.run()
-        app.close()
+def main():
+    with MesosRCCli() as app:
+        try:
+            app.setup()
+            app.run()
+            app.close()
 
-    except CaughtSignal, e:
-        app.log.error("interrupted")
-        sys.exit(3)
+        except CaughtSignal, e:
+            app.log.error("interrupted")
+            sys.exit(3)
 
-    except urllib2.HTTPError as e:
-        app.log.error("Code: \"%s\" reason: \"%s\" data: \"%s\"" % (e.code, e.reason, e.read()))
-        sys.exit(1)
+        except urllib2.HTTPError as e:
+            app.log.error("Code: \"%s\" reason: \"%s\" data: \"%s\"" % (e.code, e.reason, e.read()))
+            sys.exit(1)
 
-    except OperatorActionRequired, e:
-        app.log.error(e.message)
-        sys.exit(1)
+        except OperatorActionRequired, e:
+            app.log.error(e.message)
+            sys.exit(1)
 
-    except Exception, e:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
+        except Exception, e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
 
-        app.log.fatal(traceback.extract_tb(exc_traceback))
+            app.log.fatal(traceback.extract_tb(exc_traceback))
 
-        app.log.error(e.message)
-        sys.exit(1)
+            app.log.error(e.message)
+            sys.exit(1)
 
-        # app.render({
-        #     "Error message": [e.message],
-        #     "Traceback": [ exc_traceback.tb_frame ]
-        # }, headers="keys", tablefmt="fancy_grid")
+            # app.render({
+            #     "Error message": [e.message],
+            #     "Traceback": [ exc_traceback.tb_frame ]
+            # }, headers="keys", tablefmt="fancy_grid")
+
+if __name__ == "__main__":
+    main()

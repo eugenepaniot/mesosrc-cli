@@ -6,7 +6,7 @@ import urllib2
 
 import os
 
-from utils.core import truncate_string
+from mesosrc.utils.core import truncate_string
 
 
 class HTTPRequest(object):

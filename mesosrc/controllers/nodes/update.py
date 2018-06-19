@@ -4,8 +4,8 @@ import socket
 from cement.core.controller import expose
 from cement.ext.ext_argparse import ArgparseController
 
-from utils.core import to_bool
-from utils.exceptions import OperatorActionRequired
+from mesosrc.utils.core import to_bool
+from mesosrc.utils.exceptions import OperatorActionRequired
 
 
 class MesosNodesController(ArgparseController):

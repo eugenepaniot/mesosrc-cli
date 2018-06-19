@@ -1,0 +1,15 @@
+[log.colorlog]
+colorize_console_log = True
+
+[mesosrc]
+debug = True
+
+[mesos]
+host = http://localhost:5050
+user = 
+password =
+
+[marathon]
+host = http://localhost:8080
+user =
+password =

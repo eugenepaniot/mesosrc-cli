@@ -1,7 +1,7 @@
 from cement.core.controller import expose, CementBaseController
 
-from utils.core import format_nanos, sec2time
-from utils.exceptions import WrongDataException
+from mesosrc.utils.core import format_nanos, sec2time
+from mesosrc.utils.exceptions import WrongDataException
 
 
 class MesosMaintenanceBaseController(CementBaseController):
