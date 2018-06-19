@@ -1,7 +1,7 @@
-#!/usr/bin/env python
-# coding=utf-8
+#!/usr/bin/python2.7
 
 import os
+import pprint
 import traceback
 import urllib2
 import sys
@@ -12,15 +12,15 @@ from cement.core.controller import CementBaseController, expose
 from cement.core.foundation import CementApp
 from cement.utils.misc import init_defaults
 
-from controllers.apps import MarathonAppsBase
-from controllers.maintenance import MesosMaintenanceBaseController
-from controllers.maintenance.update import MesosMaintenanceUpdateController
-from controllers.nodes import MesosNodeBaseController
-from controllers.nodes.update import MesosNodesController
-from controllers.tasks import MesosTasksBase
-from drivers.MarathonRequest import MarathonRequest
-from drivers.MesosRequest import MesosRequest
-from utils.exceptions import OperatorActionRequired
+from mesosrc.controllers.apps import MarathonAppsBase
+from mesosrc.controllers.maintenance import MesosMaintenanceBaseController
+from mesosrc.controllers.maintenance.update import MesosMaintenanceUpdateController
+from mesosrc.controllers.nodes import MesosNodeBaseController
+from mesosrc.controllers.nodes.update import MesosNodesController
+from mesosrc.controllers.tasks import MesosTasksBase
+from mesosrc.drivers.MarathonRequest import MarathonRequest
+from mesosrc.drivers.MesosRequest import MesosRequest
+from mesosrc.utils.exceptions import OperatorActionRequired
 
 app_config = init_defaults('drivers-cli', 'log.colorlog', 'mesos', 'marathon')
 
@@ -63,6 +63,36 @@ def extendAppWMesosMarathon(app):
     except Exception, e:
         raise OperatorActionRequired("Can't initialize Mesos or Marathon connections. %s" % repr(e))
 
+
+def fillMesosMarathonByProfile(app):
+    mesos_profile = "mesos.%s" % app.pargs.profile
+    marathon_profile = "marathon.%s" % app.pargs.profile
+
+    app.config.set('mesos', 'host', app.config.get(mesos_profile, 'host'))
+
+    if 'user' in app.config.keys(mesos_profile):
+        app.config.set('mesos', 'user', app.config.get(mesos_profile, 'user'))
+    else:
+        app.config.set('mesos', 'user', app.config.get('mesos', 'user'))
+
+    if 'password' in app.config.keys(mesos_profile):
+        app.config.set('mesos', 'password', app.config.get(mesos_profile, 'password'))
+    else:
+        app.config.set('mesos', 'password', app.config.get('mesos', 'password'))
+
+    app.config.set('marathon', 'host', app.config.get(marathon_profile, 'host'))
+
+    if 'user' in app.config.keys(marathon_profile):
+        app.config.set('marathon', 'user', app.config.get(marathon_profile, 'user'))
+    else:
+        app.config.set('marathon', 'user', app.config.get('marathon', 'user'))
+
+    if 'password' in app.config.keys(marathon_profile):
+        app.config.set('marathon', 'password', app.config.get(marathon_profile, 'password'))
+    else:
+        app.config.set('marathon', 'password', app.config.get('marathon', 'password'))
+
+
 class MesosLogHandler(ColorLogHandler):
     class Meta:
         label = 'MesosLogHandler'
@@ -92,7 +122,7 @@ class MesosBaseController(CementBaseController):
 
 class MesosRCCli(CementApp):
     class Meta:
-        label = 'mesosrc'
+        label = 'mesosrccli'
         config_defaults = app_config
         arguments_override_config = True
         exit_on_close = True
@@ -105,27 +135,43 @@ class MesosRCCli(CementApp):
             MesosLogHandler
         ]
 
-        handlers += [
+        handlers += {
             MesosMaintenanceBaseController
             , MesosMaintenanceUpdateController
             , MesosNodeBaseController
             , MesosNodesController
             , MesosTasksBase
             , MarathonAppsBase
-        ]
+        }
 
         config_files = [
             "mesosrc.conf",
             "/etc/mesosrc/mesosrc.conf",
-            "~/.mesosrc.conf",
-            "~/mesosrc.conf",
+            "/usr/local/etc/mesosrc/mesosrc.conf",
             "~/.mesosrc/mesosrc.conf",
             "~/.mesosrc/config",
             "~/.local/etc/mesosrc/mesosrc.conf",
         ]
 
+        plugin_dirs = [
+            "plugins",
+            "/etc/mesosrc/plugins",
+            "/usr/local/etc/mesosrc/plugins",
+            "~/.mesosrc/plugins",
+            "~/.local/etc/mesosrc/plugins",
+        ]
+
+        plugin_config_dirs = [
+            "plugins.d",
+            "/etc/mesosrc/plugins.d",
+            "/usr/local/etc/mesosrc/plugins.d",
+            "~/.mesosrc/plugins.d",
+            "~/.local/etc/mesosrc/plugins.d",
+        ]
+
         hooks = [
-            ('pre_run', extendAppWMesosMarathon),
+            ('post_argument_parsing', fillMesosMarathonByProfile),
+            ('post_argument_parsing', extendAppWMesosMarathon),
             ('pre_close', pre_close),
         ]
 
@@ -134,22 +180,30 @@ def main():
     with MesosRCCli() as app:
         try:
             app.setup()
+
+            app.args.add_argument('-p', '--profile', action='store', dest='profile',
+                                  help='Configuration profile to use', default="default")
+
             app.run()
             app.close()
 
-        except CaughtSignal, e:
-            app.log.error("interrupted")
-            sys.exit(3)
+        except CaughtSignal as e:
+            app.log.error("Signal %d received" % e.signum)
+            sys.exit(e.signum)
 
         except urllib2.HTTPError as e:
-            app.log.error("Code: \"%s\" reason: \"%s\" data: \"%s\"" % (e.code, e.reason, e.read()))
+            app.log.error("HTTPError code: \"%s\" reason: \"%s\" data: \"%s\"" % (e.code, e.reason, e.read()))
             sys.exit(1)
 
-        except OperatorActionRequired, e:
+        except urllib2.URLError as e:
+            app.log.error("URLError: \"%s\"" % e.reason)
+            sys.exit(1)
+
+        except OperatorActionRequired as e:
             app.log.error(e.message)
             sys.exit(1)
 
-        except Exception, e:
+        except Exception as e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
 
             app.log.fatal(traceback.extract_tb(exc_traceback))

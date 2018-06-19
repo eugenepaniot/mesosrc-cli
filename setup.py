@@ -1,6 +1,4 @@
 from setuptools import setup, find_packages
-from pkg_resources import Requirement, resource_filename
-filename = resource_filename(Requirement.parse("mesosrc"), "mesosrc.conf")
 
 setup(
     name="mesosrc",
@@ -12,11 +10,8 @@ setup(
                       'colorlog>=3.1.4',
                       'tabulate>=0.8.2'
                       ],
-    entry_points={
-        'console_scripts': [
-            'mesosrc=mesosrc.mesosrc:main',
-        ],
-    },
+
+    scripts=['mesosrccli'],
 
     data_files=[
         ('etc/mesosrc', ['mesosrc/mesosrc.conf.example'])

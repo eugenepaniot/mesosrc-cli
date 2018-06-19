@@ -1,5 +1,4 @@
 from cement.core.controller import expose, CementBaseController
-
 from mesosrc.utils.core import format_nanos, sec2time
 from mesosrc.utils.exceptions import WrongDataException
 

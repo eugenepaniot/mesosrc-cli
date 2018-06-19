@@ -1,15 +1,37 @@
 [log.colorlog]
 colorize_console_log = True
 
-[mesosrc]
+[mesosrccli]
 debug = True
 
-[mesos]
-host = http://localhost:5050
-user = 
-password =
 
-[marathon]
-host = http://localhost:8080
+[mesos.default]
+host = http://mesos.default:5050
 user =
 password =
+
+[marathon.default]
+host = http://marathon.default:8080
+user =
+password =
+
+
+[mesos.profile1]
+host = http://mesos.profile1:5050
+
+[marathon.profile1]
+host = http://marathon.profile1:8080
+
+
+[mesos.profile2]
+host = http://mesos.profile2:5050
+
+[marathon.profile2]
+host = http://marathon.profile2:8080
+
+
+[mesos.profile3]
+host = http://mesos.profile3:5050
+
+[marathon.profile3]
+host = http://marathon.profile3:8080

@@ -16,7 +16,7 @@ class MarathonRequest(HTTPRequest):
         self.scheme = urlparse(address).scheme
         try:
             self.leader = self.urlOpenJsonToObject("/v2/leader")['leader']
-        except Exception, e:
+        except Exception as e:
             self.logger.warning("Can't initialize marathon leader from address %s: %s" % (self.getAddress(), repr(e)))
             self.leader = None
         else:
