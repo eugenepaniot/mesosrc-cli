@@ -2,7 +2,7 @@
 colorize_console_log = True
 
 [mesosrccli]
-debug = True
+debug = False
 
 
 [mesos.default]

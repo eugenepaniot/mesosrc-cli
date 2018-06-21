@@ -7,7 +7,15 @@ class MesosRequest(HTTPRequest):
 
     def getSlaveByID(self, id):
         assert id, "ID is required"
+
         return self.urlOpenJsonToObject("/slaves?slave_id=%s" % id)
+
+    def getTasks(self):
+        return self.urlOpenJsonToObject("/tasks")
+
+    def getTaskByID(self, id):
+        assert id, "ID is required"
+        return self.urlOpenJsonToObject("/tasks?task_id=%s" % id)
 
     def getStateSummary(self):
         return self.urlOpenJsonToObject("/state-summary")
@@ -26,4 +34,4 @@ class MesosRequest(HTTPRequest):
         if 'draining_machines' not in maint:
             return
 
-        return filter(lambda x: x['id']['hostname'] == hostname, maint['draining_machines'])
+        return list(filter(lambda x: x['id']['hostname'] == hostname, maint['draining_machines']))

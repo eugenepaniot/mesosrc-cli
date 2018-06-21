@@ -1,5 +1,12 @@
 from time import sleep
-from urlparse import urlparse
+
+import requests
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+
 from pprint import pformat
 
 from mesosrc.drivers.HTTPRequest import HTTPRequest
@@ -13,9 +20,16 @@ class MarathonRequest(HTTPRequest):
     def __init__(self, address, user, password, headers, logger):
         super(MarathonRequest, self).__init__(address, user, password, headers, logger)
 
-        self.scheme = urlparse(address).scheme
+        self.scheme = urlparse(self.getAddress()).scheme
         try:
             self.leader = self.urlOpenJsonToObject("/v2/leader")['leader']
+        except requests.exceptions.HTTPError as e:
+            self.logger.warning("HTTPError response code \"%d\" : \"%s\" for request url: \"%s\" headers: \"%s\"" %
+                                (e.response.status_code,
+                                 e.response.text,
+                                 e.request.url,
+                                 e.request.headers
+                                 ))
         except Exception as e:
             self.logger.warning("Can't initialize marathon leader from address %s: %s" % (self.getAddress(), repr(e)))
             self.leader = None
@@ -33,6 +47,11 @@ class MarathonRequest(HTTPRequest):
     def getApps(self):
         return self.urlOpenJsonToObject("/v2/apps?embed=apps.tasks")
 
+    def getAppByID(self, id):
+        assert id, "Task ID is required"
+
+        return self.urlOpenJsonToObject("/v2/apps/%s?embed=apps.tasks" % id)
+
     def getQueue(self):
         return self.urlOpenJsonToObject("/v2/queue")
 
@@ -40,9 +59,13 @@ class MarathonRequest(HTTPRequest):
         return self.urlOpenJsonToObject("/v2/deployments")
 
     def getDeploymentByID(self, id):
-        return filter(lambda x: 'id' in x and x['id'] == id, self.urlOpenJsonToObject("/v2/deployments"))
+        assert id, "Deployment ID is required"
+
+        return list(filter(lambda x: 'id' in x and x['id'] == id, self.urlOpenJsonToObject("/v2/deployments")))
 
     def awaitForDeploymentID(self, id, maxTries=1800, rollBack=True):
+        assert id, "Deployment ID is required"
+
         try:
             currentTries = 0
             while self.getDeploymentByID(id):
@@ -52,7 +75,7 @@ class MarathonRequest(HTTPRequest):
                 currentTries += 1
                 if currentTries % 3 == 0:
                     self.logger.info("Awaiting(%d/%d) for deploymentId: %s" % (currentTries, maxTries,
-                                                                                   id))
+                                                                               id))
                 sleep(1)
 
         except MaxTriesExceeded as e:

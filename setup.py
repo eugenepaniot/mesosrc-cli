@@ -8,13 +8,16 @@ setup(
 
     install_requires=['cement>=2.10.2',
                       'colorlog>=3.1.4',
-                      'tabulate>=0.8.2'
+                      'colored>=1.3.5',
+                      'tabulate>=0.8.2',
+                      'requests>=2.9.1',
+                      'tornado>=5.0.2'
                       ],
 
     scripts=['mesosrccli'],
 
     data_files=[
-        ('etc/mesosrc', ['mesosrc/mesosrc.conf.example'])
+        ('etc/mesosrc', ['mesosrc.conf.example'])
     ],
 
     license='MIT',

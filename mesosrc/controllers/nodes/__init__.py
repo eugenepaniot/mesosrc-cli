@@ -20,8 +20,6 @@ class MesosNodeBaseController(CementBaseController):
     def list(self):
         def pretty(data):
             def get_resources(res):
-                self.app.log.debug("res: %s" % res)
-
                 ret = {"CPU": "NA", "Memory": "NA"}
                 for r in res:
                     if r['name'] == "mem":
@@ -40,8 +38,8 @@ class MesosNodeBaseController(CementBaseController):
                 res_total = get_resources(d['unreserved_resources_full'])
                 res_used = get_resources(d['used_resources_full'])
 
-                ss_slave = filter(lambda x: 'id' in x and x['id'] == d['id'],
-                                  state_summary['slaves'])[0]
+                ss_slave = list(filter(lambda x: 'id' in x and x['id'] == d['id'],
+                                       state_summary['slaves']))[0]
 
                 ret = {
                     "ID": d['id'],

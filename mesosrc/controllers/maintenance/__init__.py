@@ -25,12 +25,10 @@ class MesosMaintenanceBaseController(CementBaseController):
 
             for i in data:
                 if i == 'down_machines':
-                    self.app.log.debug(data[i])
                     for d in data[i]:
                         ret["Down machines"].append("%s (%s)" % (d["hostname"], d["ip"]))
 
                 elif i == 'draining_machines':
-                    self.app.log.debug("draining_machines")
                     for d in data[i]:
                         ret["In drain"].append("%s (%s)" % (d["id"]["hostname"], d["id"]["ip"]))
                 else:
@@ -48,12 +46,8 @@ class MesosMaintenanceBaseController(CementBaseController):
             else:
                 for w in data['windows']:
                     un = w['unavailability']
-                    self.app.log.debug(un)
 
                     for m in w['machine_ids']:
-                        self.app.log.debug(m)
-                        self.app.log.debug(un['duration']['nanoseconds'])
-
                         yield {
                             "Machine": "%s (%s)" % (m['hostname'], m['ip']),
                             "Schedule Window": "Start time: %s, duration: %s. End time: %s" % (

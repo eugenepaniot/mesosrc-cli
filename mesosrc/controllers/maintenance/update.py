@@ -52,12 +52,10 @@ class MesosMaintenanceUpdateController(CementBaseController):
         if self.app.pargs.hostame is not None and self.app.pargs.id is not None:
             self.app.log.error("--id conflicted argument")
             self.app.args.parse_args(['--help'])
-            return
 
         if self.app.pargs.id is None and self.app.pargs.hostame is None:
             self.app.log.error("--id or --hostame required arguments")
             self.app.args.parse_args(['--help'])
-            return
 
         # if self.app.pargs.id is None:
         #     self.app.log.error("--id required arguments")

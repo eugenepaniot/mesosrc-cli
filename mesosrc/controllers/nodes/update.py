@@ -39,7 +39,6 @@ class MesosNodesController(ArgparseController):
         if self.app.pargs.hostame is None:
             self.app.log.error("--hostame required argument")
             self.app.args.parse_args(['--help'])
-            return
 
         machines = []
 
@@ -72,7 +71,6 @@ class MesosNodesController(ArgparseController):
         if self.app.pargs.hostame is None:
             self.app.log.error("--hostame required argument")
             self.app.args.parse_args(['--help'])
-            return
 
         appsToPatch = []
         tasksPerHost = {}
@@ -96,6 +94,10 @@ class MesosNodesController(ArgparseController):
         for a, s in tasksPerHost.items():
             appsToPatch.append(dict(id=a, instances=s['instances']))
 
+        if not appsToPatch:
+            self.app.log.warning("There are no any apps associated to hosts %s" % self.app.pargs.hostame)
+            return
+
         self.app.log.info("Scale-UP apps: %s" % appsToPatch)
         response = self.app.marathon.PATCH(path="/v2/apps?force=%s" % self.app.pargs.force, data=json.dumps(appsToPatch))
         self.app.log.info(response)
@@ -114,7 +116,8 @@ class MesosNodesController(ArgparseController):
                 deploymentId = json.loads(response)['deploymentId']
 
                 if to_bool(self.app.pargs.wait):
-                    self.app.marathon.awaitForDeploymentID(id=deploymentId, maxTries=self.app.pargs.waitTime, rollBack=True)
+                    self.app.marathon.awaitForDeploymentID(id=deploymentId, maxTries=self.app.pargs.waitTime,
+                                                           rollBack=True)
                 else:
                     self.app.log.warning("Skip to wait for marathon tasks to complete")
 
@@ -124,7 +127,6 @@ class MesosNodesController(ArgparseController):
         if self.app.pargs.id is None:
             self.app.log.error("--id required argument for this action")
             self.app.args.parse_args(['--help'])
-            return
 
         for id in self.app.pargs.id.split(","):
             gone = {

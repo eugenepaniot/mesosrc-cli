@@ -1,12 +1,21 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python
 
 import os
 import pprint
+import signal
+
+import cement
+from cement.core.exc import CaughtSignal
+
+try:
+    from configparser import NoSectionError
+except ImportError:
+    from ConfigParser import NoSectionError
+
+import requests
 import traceback
-import urllib2
 import sys
 
-from cement.core.exc import CaughtSignal
 from cement.ext.ext_colorlog import ColorLogHandler
 from cement.core.controller import CementBaseController, expose
 from cement.core.foundation import CementApp
@@ -60,8 +69,8 @@ def extendAppWMesosMarathon(app):
 
         app.extend('mesos', mesos)
         app.extend('marathon', marathon)
-    except Exception, e:
-        raise OperatorActionRequired("Can't initialize Mesos or Marathon connections. %s" % repr(e))
+    except Exception as e:
+        raise Exception("Can't initialize Mesos or Marathon connections. %s" % repr(e))
 
 
 def fillMesosMarathonByProfile(app):
@@ -72,25 +81,17 @@ def fillMesosMarathonByProfile(app):
 
     if 'user' in app.config.keys(mesos_profile):
         app.config.set('mesos', 'user', app.config.get(mesos_profile, 'user'))
-    else:
-        app.config.set('mesos', 'user', app.config.get('mesos', 'user'))
 
     if 'password' in app.config.keys(mesos_profile):
         app.config.set('mesos', 'password', app.config.get(mesos_profile, 'password'))
-    else:
-        app.config.set('mesos', 'password', app.config.get('mesos', 'password'))
 
     app.config.set('marathon', 'host', app.config.get(marathon_profile, 'host'))
 
     if 'user' in app.config.keys(marathon_profile):
         app.config.set('marathon', 'user', app.config.get(marathon_profile, 'user'))
-    else:
-        app.config.set('marathon', 'user', app.config.get('marathon', 'user'))
 
     if 'password' in app.config.keys(marathon_profile):
         app.config.set('marathon', 'password', app.config.get(marathon_profile, 'password'))
-    else:
-        app.config.set('marathon', 'password', app.config.get('marathon', 'password'))
 
 
 class MesosLogHandler(ColorLogHandler):
@@ -130,7 +131,6 @@ class MesosRCCli(CementApp):
         output_handler = 'tabulate'
         log_handler = MesosLogHandler
         base_controller = MesosBaseController
-
         handlers = [
             MesosLogHandler
         ]
@@ -187,34 +187,36 @@ def main():
             app.run()
             app.close()
 
-        except CaughtSignal as e:
-            app.log.error("Signal %d received" % e.signum)
-            sys.exit(e.signum)
-
-        except urllib2.HTTPError as e:
-            app.log.error("HTTPError code: \"%s\" reason: \"%s\" data: \"%s\"" % (e.code, e.reason, e.read()))
+        except requests.exceptions.HTTPError as e:
+            app.log.error("HTTPError response code \"%d\" : \"%s\" "
+                          "for request url: \"%s\" "
+                          "headers: \"%s\""
+                          % (e.response.status_code,
+                             e.response.text,
+                             e.request.url,
+                             e.request.headers
+                             ))
             sys.exit(1)
 
-        except urllib2.URLError as e:
-            app.log.error("URLError: \"%s\"" % e.reason)
+        except NoSectionError as e:
+            app.log.error(e.message)
             sys.exit(1)
 
         except OperatorActionRequired as e:
             app.log.error(e.message)
             sys.exit(1)
 
-        except Exception as e:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
+        except CaughtSignal as e:
+            app.log.error("Signal %d received" % e.signum)
+            sys.exit(e.signum)
 
-            app.log.fatal(traceback.extract_tb(exc_traceback))
+            # except Exception as e:
+        #     exc_type, exc_value, exc_traceback = sys.exc_info()
+        #
+        #     app.log.fatal(pprint.pformat(traceback.extract_tb(exc_traceback)))
+        #     app.log.error(repr(e))
+        #     sys.exit(1)
 
-            app.log.error(e.message)
-            sys.exit(1)
-
-            # app.render({
-            #     "Error message": [e.message],
-            #     "Traceback": [ exc_traceback.tb_frame ]
-            # }, headers="keys", tablefmt="fancy_grid")
 
 if __name__ == "__main__":
     main()

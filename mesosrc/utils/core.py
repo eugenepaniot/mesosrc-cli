@@ -1,6 +1,12 @@
 import datetime
 
 
+def merge_two_dicts(x, y):
+    z = x.copy()
+    z.update(y)
+    return z
+
+
 def flatten_dict(d):
     def items():
         for key, value in d.items():
@@ -13,9 +19,9 @@ def flatten_dict(d):
     return dict(items())
 
 
-def truncate_string(string, lenght=2048):
-    return string[:lenght / 2] + '  ...  (TRUNCATED OUTPUT)  ...  ' + string[-lenght / 2:] \
-        if string and len(string) > lenght else string
+def truncate_string(string, lenght=1024):
+    return string[:int(lenght / 2)] + '  ...  (TRUNCATED (' + str(lenght) + ') OUTPUT)  ...  ' + string[-int(lenght / 2):] \
+        if string and len(string) > int(lenght) else string
 
 
 def sec2time(sec):
@@ -47,7 +53,7 @@ def to_bool(value):
     if isinstance(value, bool):
         return value
 
-    if not isinstance(value, basestring):
+    if type(value) is not str:
         raise ValueError('invalid literal for boolean. Not a string.')
 
     lower_value = value.lower()

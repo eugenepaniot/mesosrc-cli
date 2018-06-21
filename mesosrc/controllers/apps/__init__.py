@@ -33,7 +33,7 @@ class MarathonAppsBase(CementBaseController):
                     "ID": a['id'],
                     "Instances": a['instances'],
                     "Tasks staging, running": "%d/%d" % (a['tasksStaged'], a['tasksRunning']),
-                    "Tasks per slaves": '\n'.join("%s: %d" % (k, v) for (k, v) in tasksPerSlaves.iteritems())
+                    "Tasks per slaves": '\n'.join("%s: %d" % (k, v) for (k, v) in tasksPerSlaves.items())
                 }
 
                 yield OrderedDict((k, ret[k])
