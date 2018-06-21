@@ -51,9 +51,13 @@ class MesosTasksBase(CementBaseController):
             self.app.log.info("Streaming logs from: %s" % urls)
 
             def on_chunk(chunk):
-                def getColor(id):
+                def getColor(id, source):
+                    add=''
+                    if source == "stderr":
+                        add = attr('bold')
+
                     if self.app.pargs.colored:
-                        return fg(int(id, 36) % 256)
+                        return fg(int(id, 36) % 256) + add
                     else:
                         return attr('reset')
 
@@ -67,7 +71,7 @@ class MesosTasksBase(CementBaseController):
 
                     print("%s%s | %s | %s %s\n" %
                           (
-                              getColor(resp['Container']['Id'][:16]),
+                              getColor(resp['Container']['Id'][:16], resp['Source']),
                               resp['Source'],
                               resp['Container']['Id'][:16],
                               resp['Data'].strip(),
