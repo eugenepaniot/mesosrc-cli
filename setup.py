@@ -10,8 +10,7 @@ setup(
                       'colorlog>=3.1.4',
                       'colored>=1.3.5',
                       'tabulate>=0.8.2',
-                      'requests>=2.9.1',
-                      'tornado>=5.0.2'
+                      'requests>=2.9.1'
                       ],
 
     scripts=['mesosrccli'],

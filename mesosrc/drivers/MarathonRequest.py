@@ -15,12 +15,10 @@ from mesosrc.utils.exceptions import MaxTriesExceeded, OperatorActionRequired
 
 class MarathonRequest(HTTPRequest):
     leader = None
-    scheme = None
 
     def __init__(self, address, user, password, headers, logger):
         super(MarathonRequest, self).__init__(address, user, password, headers, logger)
 
-        self.scheme = urlparse(self.getAddress()).scheme
         try:
             self.leader = self.urlOpenJsonToObject("/v2/leader")['leader']
         except requests.exceptions.HTTPError as e:
@@ -38,11 +36,13 @@ class MarathonRequest(HTTPRequest):
 
     def getAddress(self):
         if self.leader:
-            self.logger.debug("leader: " + self.leader)
-            return "%s://%s" % (self.scheme, self.leader)
+            leader = "%s://%s" % (self.getScheme(), self.leader)
+            self.logger.debug("leader: " + leader)
+            return leader
         else:
-            self.logger.debug("address: " + self.address)
-            return self.address
+            address = "%s://%s" % (self.getScheme(), self.address)
+            self.logger.debug("address: %s" % address)
+            return address
 
     def getApps(self):
         return self.urlOpenJsonToObject("/v2/apps?embed=apps.tasks")

@@ -28,7 +28,7 @@ from mesosrc.controllers.nodes import MesosNodeBaseController
 from mesosrc.controllers.nodes.update import MesosNodesController
 from mesosrc.controllers.tasks import MesosTasksBase
 from mesosrc.drivers.MarathonRequest import MarathonRequest
-from mesosrc.drivers.MesosRequest import MesosRequest
+from mesosrc.drivers.MesosRequest import MesosMasterRequest
 from mesosrc.utils.exceptions import OperatorActionRequired
 
 app_config = init_defaults('drivers-cli', 'log.colorlog', 'mesos', 'marathon')
@@ -53,12 +53,12 @@ def pre_close(app):
 
 def extendAppWMesosMarathon(app):
     try:
-        mesos = MesosRequest(address=app.config.get('mesos', 'host'),
-                             user=app.config.get('mesos', 'user'),
-                             password=app.config.get('mesos', 'password'),
-                             headers=None,
-                             logger=app.log,
-                             )
+        mesos = MesosMasterRequest(address=app.config.get('mesos', 'host'),
+                                   user=app.config.get('mesos', 'user'),
+                                   password=app.config.get('mesos', 'password'),
+                                   headers=None,
+                                   logger=app.log,
+                                   )
 
         marathon = MarathonRequest(address=app.config.get('marathon', 'host'),
                                    user=app.config.get('marathon', 'user'),

@@ -1,20 +1,16 @@
-import json
-import logging
 import pprint
-
-import tornado
-
-from colored import fg, attr
+import uuid
+from collections import defaultdict
+from time import sleep
 
 from cement.core.exc import CaughtSignal
+from colored import fg, attr
+
 from cement.core.controller import expose, CementBaseController
+from requests import HTTPError
 
+from mesosrc.drivers.MesosRequest import MesosSlaveRequest
 from mesosrc.utils.core import to_bool
-
-from tornado import ioloop, gen, httpclient
-from tornado.httpclient import AsyncHTTPClient
-
-from mesosrc.utils.exceptions import OperatorActionRequired
 
 
 class MesosTasksBase(CementBaseController):
@@ -29,8 +25,10 @@ class MesosTasksBase(CementBaseController):
 
         arguments = [
             (['--app'], dict(help='Marathon application')),
-            (['--colored'], dict(help='Enable colored output for logspout (default: %(default)s)', type=to_bool,
+            (['--colored'], dict(help='Enable colored output in logs (default: %(default)s)', type=to_bool,
                                  default=True)),
+            (['--last'], dict(help='Tail only on the latest logs lines(default: %(default)s)', type=to_bool,
+                              default=True)),
         ]
 
     @expose(hide=True)
@@ -41,81 +39,79 @@ class MesosTasksBase(CementBaseController):
     def attach(self):
         self.app.log.warning("TBD")
 
-    @expose(help="Connect to logspout to gather application's stdout/stderr", aliases=['logsp'])
-    def logspout(self):
-        @gen.coroutine
-        def getLogs():
-            global strbuff
-            strbuff = str()
+    @expose(help="Connect to slaves to gather application's stdout/stderr logs", aliases=['log'])
+    def logs(self):
+        def getColor(id, source=None):
+            add = ''
+            if source == "stderr":
+                add = attr('bold')
 
-            self.app.log.info("Streaming logs from: %s" % urls)
+            if self.app.pargs.colored:
+                u = str(uuid.uuid3(uuid.NAMESPACE_OID, id))
+                id = ''.join([i for i in u if i.isalpha()])
+                return fg(int(id, 36) % 256) + add
+            else:
+                return attr('reset')
 
-            def on_chunk(chunk):
-                def getColor(id, source):
-                    add=''
-                    if source == "stderr":
-                        add = attr('bold')
-
-                    if self.app.pargs.colored:
-                        return fg(int(id, 36) % 256) + add
-                    else:
-                        return attr('reset')
-
-                global strbuff
-                try:
-                    resp = json.loads(strbuff + chunk.decode())
-                except ValueError:
-                    strbuff += chunk.decode()
-                else:
-                    strbuff = str()
-
-                    print("%s%s | %s | %s %s\n" %
-                          (
-                              getColor(resp['Container']['Id'][:16], resp['Source']),
-                              resp['Source'],
-                              resp['Container']['Id'][:16],
-                              resp['Data'].strip(),
-                              attr('reset')
-                          ))
-
-            waiter = gen.WaitIterator(*[
-                AsyncHTTPClient(force_instance=True).fetch(
-                    httpclient.HTTPRequest(url=url,
-                                           streaming_callback=on_chunk,
-                                           request_timeout=0,
-                                           headers={'Accept': 'application/json'}
-                                           ))
-                for url in urls
-            ])
-
-            while not waiter.done():
-                response = yield waiter.next()
+        def getDirectoryByID(state, id):
+            for framework in state['frameworks']:
+                for executor in framework['executors']:
+                    if executor['id'] == id:
+                        return executor['directory']
 
         if self.app.pargs.app is None:
             self.app.log.error("--app required argument")
             self.app.args.parse_args(['--help'])
 
-        urls = []
+        readedFiles = defaultdict(int)
+        while True:
+            try:
+                for task in self.app.marathon.getAppByID(self.app.pargs.app)['app']['tasks']:
+                    mesos_task = self.app.mesos.getTaskByID(task['id'])['tasks'][0]
 
-        for task in self.app.marathon.getAppByID(self.app.pargs.app)['app']['tasks']:
-            mesos_task = self.app.mesos.getTaskByID(task['id'])['tasks'][0]
-            container_id = mesos_task['statuses'][0]['container_status']['container_id']['value']
+                    slave = self.app.mesos.getSlaveByID(mesos_task['slave_id'])['slaves'][0]
 
-            container_name = "mesos-%s" % container_id
+                    slaveRequest = MesosSlaveRequest(address="http://%s:%d" % (slave['hostname'], slave['port']),
+                                                     logger=self.app.log)
 
-            urls.append("http://%s/logs/name:%s" % (task['host'], container_name))
+                    slaveState = slaveRequest.getState()
+                    directoryPerExecutor = getDirectoryByID(slaveState, mesos_task['id'])
+                    if not directoryPerExecutor:
+                        continue
 
-        lh = self.app.handler.get('log', 'logging')
+                    for f in ['stderr', 'stdout']:
+                        try:
+                            file = "%s/%s" % (directoryPerExecutor, f)
 
-        logging.getLogger('tornado').addHandler(lh)
-        logging.getLogger("tornado.general").addHandler(lh)
-        logging.getLogger("tornado.access").addHandler(lh)
-        logging.getLogger("tornado.application").addHandler(lh)
+                            if file not in readedFiles:
+                                self.app.log.info("Reading %s from %s" % (file, slaveRequest.getAddress()))
 
-        try:
-            tornado.ioloop.IOLoop.instance().run_sync(getLogs)
-        except CaughtSignal as e:
-            raise e
-        except Exception as e:
-            tornado.ioloop.IOLoop.instance().stop()
-            raise OperatorActionRequired("Error: %s" % pprint.pformat(e))
+                                if self.app.pargs.last:
+                                    browseFiles = slaveRequest.browseFiles(dir=directoryPerExecutor)
+                                    fileFound = list(filter(lambda x: x['path'] == file, browseFiles))
+                                    if fileFound:
+                                        readedFiles[file] = fileFound[0]['size']
+
+                            while True:
+                                data = slaveRequest.readFile(file=file, offset=readedFiles.get(file, 0))['data']
+                                if not data:
+                                    break
+
+                                print("%s%s | %s | %s %s\n" % (
+                                    getColor(mesos_task['id']+mesos_task['slave_id'], f),
+                                    f, mesos_task['id'], data,
+                                    attr('reset')
+                                ))
+
+                                readedFiles[file] += len(data)
+
+                        except HTTPError as e:
+                            self.app.log.warning(pprint.pformat(e))
+                            continue
+
+            except (CaughtSignal, KeyboardInterrupt) as e:
+                raise e
+            except Exception as e:
+                self.app.log.warning(pprint.pformat(e))
+
+            sleep(1)

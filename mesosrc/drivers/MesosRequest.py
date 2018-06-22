@@ -1,13 +1,12 @@
 from mesosrc.drivers.HTTPRequest import HTTPRequest
 
 
-class MesosRequest(HTTPRequest):
+class MesosMasterRequest(HTTPRequest):
     def getSlaves(self):
         return self.urlOpenJsonToObject("/slaves")
 
     def getSlaveByID(self, id):
         assert id, "ID is required"
-
         return self.urlOpenJsonToObject("/slaves?slave_id=%s" % id)
 
     def getTasks(self):
@@ -35,3 +34,14 @@ class MesosRequest(HTTPRequest):
             return
 
         return list(filter(lambda x: x['id']['hostname'] == hostname, maint['draining_machines']))
+
+
+class MesosSlaveRequest(HTTPRequest):
+    def getState(self):
+        return self.urlOpenJsonToObject("/state")
+
+    def readFile(self, file, offset=0):
+        return self.urlOpenJsonToObject(path="/files/read?path=%s&offset=%u" % (file, offset))
+
+    def browseFiles(self, dir):
+        return self.urlOpenJsonToObject(path="/files/browse?path=%s" % dir)

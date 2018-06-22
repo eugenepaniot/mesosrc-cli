@@ -1,5 +1,12 @@
 import logging
 import os
+import pprint
+
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
+
 import requests
 from requests.auth import HTTPBasicAuth
 
@@ -9,12 +16,8 @@ from mesosrc.utils.core import merge_two_dicts, truncate_string
 class HTTPRequest(object):
     headers = []
 
-    def __init__(self, address, user, password, headers=None, logger=None):
+    def __init__(self, address, user=None, password=None, headers=None, logger=None):
         super(HTTPRequest, self).__init__()
-
-        self.password = password
-        self.address = address
-        self.user = user
 
         if logger is None:
             self.logger = logging.getLogger(__name__)
@@ -24,15 +27,34 @@ class HTTPRequest(object):
         if headers is None:
             headers = dict()
 
+        self.password = password
+        self.user = user
+
+        urlParse = urlparse(address)
+        self.logger.debug("urlParse: %s" % pprint.pformat(urlParse))
+
+        self.scheme = "%s" % urlParse.scheme
+        self.address = "%s" % urlParse.netloc
+
         self.headers = headers
         self.session = requests.Session()
 
     def getHttpSession(self):
         return self.session
 
+    def getScheme(self):
+        if self.scheme:
+            return self.scheme
+        else:
+            return "http"
+
     def getAddress(self):
-        self.logger.debug("address: %s" % self.address)
-        return self.address
+        assert self.address, "Address required"
+
+        address = "%s://%s" % (self.getScheme(), self.address)
+        self.logger.debug("address: %s" % address)
+
+        return address
 
     def getUser(self):
         self.logger.debug("user: %s" % self.user)
