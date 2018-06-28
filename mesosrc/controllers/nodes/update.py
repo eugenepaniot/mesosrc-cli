@@ -78,9 +78,9 @@ class MesosNodesController(ArgparseController):
         apps = self.app.marathon.getApps()
         for h in self.app.pargs.hostame.split(","):
             if not self.app.mesos.getMaintenanceScheduleByHostname(h):
-                raise OperatorActionRequired("You should schedule maintenance for node '%s' first" % h)
+                raise OperatorActionRequired("You should schedule maintenance for the '%s' node first" % h)
 
-            for a in apps['apps']:
+            for a in apps:
                 for t in a['tasks']:
                     if t['host'] == h:
                         if a['id'] not in tasksPerHost:

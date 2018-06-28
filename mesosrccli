@@ -13,7 +13,6 @@ except ImportError:
     from ConfigParser import NoSectionError
 
 import requests
-import traceback
 import sys
 
 from cement.ext.ext_colorlog import ColorLogHandler
@@ -100,20 +99,18 @@ class MesosLogHandler(ColorLogHandler):
 
         config_defaults = dict(
             file=None,
-            level='DBEUG',
+            level='INFO',
             to_console=True,
             rotate=False,
             max_bytes=512000,
             max_files=4,
-            colorize_file_log=False,
-            colorize_console_log=True,
         )
 
 
 class MesosBaseController(CementBaseController):
     class Meta:
         label = 'base'
-        description = "Mesos RingCentral CLI"
+        description = "RingCentral Mesos CLI"
         stacked_on = 'base'
 
     @expose(hide=True)

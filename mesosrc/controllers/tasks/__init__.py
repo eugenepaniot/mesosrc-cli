@@ -47,9 +47,8 @@ class MesosTasksBase(CementBaseController):
                 add = attr('bold')
 
             if self.app.pargs.colored:
-                u = str(uuid.uuid3(uuid.NAMESPACE_OID, id))
-                id = ''.join([i for i in u if i.isalpha()])
-                return fg(int(id, 36) % 256) + add
+                u = str(uuid.uuid3(uuid.NAMESPACE_OID, str(id)))
+                return fg(int(u.replace('-', ''), 36) % 256) + add
             else:
                 return attr('reset')
 
@@ -66,7 +65,7 @@ class MesosTasksBase(CementBaseController):
         readedFiles = defaultdict(int)
         while True:
             try:
-                for task in self.app.marathon.getAppByID(self.app.pargs.app)['app']['tasks']:
+                for task in self.app.marathon.getAppByID(self.app.pargs.app)['tasks']:
                     mesos_task = self.app.mesos.getTaskByID(task['id'])['tasks'][0]
 
                     slave = self.app.mesos.getSlaveByID(mesos_task['slave_id'])['slaves'][0]
@@ -97,11 +96,12 @@ class MesosTasksBase(CementBaseController):
                                 if not data:
                                     break
 
-                                print("%s%s | %s | %s %s\n" % (
-                                    getColor(mesos_task['id']+mesos_task['slave_id'], f),
-                                    f, mesos_task['id'], data,
-                                    attr('reset')
-                                ))
+                                print(u"%s%s | %s | %s | %s %s\n" %
+                                      (
+                                          getColor(mesos_task['id'], f),
+                                          f, mesos_task['id'], slave['hostname'], data,
+                                          attr('reset')
+                                      ))
 
                                 readedFiles[file] += len(data)
 

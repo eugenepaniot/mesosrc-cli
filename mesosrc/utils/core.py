@@ -61,3 +61,14 @@ def to_bool(value):
         return valid[lower_value]
     else:
         raise ValueError('invalid literal for boolean: "%s"' % value)
+
+
+def percentage(part, whole):
+    try:
+        part = float(part)
+        whole = float(whole)
+    except ValueError:
+        whole = 1
+        part = 0
+
+    return 100 * float(part)/float(whole)

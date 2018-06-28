@@ -1,6 +1,8 @@
 from collections import OrderedDict
 from cement.core.controller import expose, CementBaseController
 
+from mesosrc.utils.core import percentage
+
 
 class MesosNodeBaseController(CementBaseController):
     class Meta:
@@ -9,7 +11,7 @@ class MesosNodeBaseController(CementBaseController):
         stacked_type = 'nested'
 
         description = "Mesos Nodes primitives"
-        aliases = ['nodes', 'node']
+        aliases = ['nodes', 'node', 'slave', 'slaves', 'agent', 'agents']
         aliases_only = True
 
     @expose(hide=True)
@@ -44,19 +46,22 @@ class MesosNodeBaseController(CementBaseController):
                 ret = {
                     "ID": d['id'],
                     "Hostname": d['hostname'],
-                    "Mesos Version / CCS Version": "%s/%s" % (d['version'], d['attributes'].get("ccs_version", "NA")),
-                    "CPU (Total/Used)": "%s/%s" % (res_total['CPU'], res_used['CPU']),
-                    "Memory (Total/Used),\nGB": "%s/%s" % (res_total['Memory'], res_used['Memory']),
-                    "Tasks\nstaging, running, failed": "%d/%d/%d" % (ss_slave['TASK_STAGING'],
+                    "Mesos Version/CCS Version": "%s/%s" % (d['version'], d['attributes'].get("ccs_version", "NA")),
+                    "CPU (Total/Used, Used %)": "%s/%s, %.1f%%" % (res_total['CPU'], res_used['CPU'],
+                                                                  percentage(res_used['CPU'], res_total['CPU'])),
+                    "Memory (Total/Used, Used %),\nGB": "%s/%s, %.1f%%" % (res_total['Memory'], res_used['Memory'],
+                                                                         percentage(res_used['Memory'],
+                                                                                    res_total['Memory'])),
+                    "Tasks\nstaging/running/failed": "%d/%d/%d" % (ss_slave['TASK_STAGING'],
                                                                      ss_slave['TASK_RUNNING'],
                                                                      ss_slave['TASK_FAILED']
                                                                      )
                 }
 
                 yield OrderedDict((k, ret[k])
-                                  for k in ['ID', 'Hostname', 'CPU (Total/Used)',
-                                            'Memory (Total/Used),\nGB', 'Mesos Version / CCS Version',
-                                            'Tasks\nstaging, running, failed']
+                                  for k in ['ID', 'Hostname', 'CPU (Total/Used, Used %)',
+                                            'Memory (Total/Used, Used %),\nGB', 'Mesos Version/CCS Version',
+                                            'Tasks\nstaging/running/failed']
                                   )
 
         self.app.render(pretty(self.app.mesos.getSlaves()), headers="keys", tablefmt="fancy_grid")

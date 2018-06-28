@@ -45,12 +45,18 @@ class MarathonRequest(HTTPRequest):
             return address
 
     def getApps(self):
-        return self.urlOpenJsonToObject("/v2/apps?embed=apps.tasks")
+        return self.urlOpenJsonToObject("/v2/apps?embed=apps.tasks")['apps']
 
     def getAppByID(self, id):
         assert id, "Task ID is required"
 
-        return self.urlOpenJsonToObject("/v2/apps/%s?embed=apps.tasks" % id)
+        return self.urlOpenJsonToObject("/v2/apps/%s?embed=apps.tasks" % id)['app']
+
+    def getAppsByNode(self, node):
+        for app in self.getApps():
+            for task in app['tasks']:
+                if task['host'] == node:
+                    yield app
 
     def getQueue(self):
         return self.urlOpenJsonToObject("/v2/queue")
@@ -73,7 +79,7 @@ class MarathonRequest(HTTPRequest):
                     raise MaxTriesExceeded(currentTries, maxTries, "Deployment %s failed" % id)
 
                 currentTries += 1
-                if currentTries % 3 == 0:
+                if currentTries % 5 == 0:
                     self.logger.info("Awaiting(%d/%d) for deploymentId: %s" % (currentTries, maxTries,
                                                                                id))
                 sleep(1)
