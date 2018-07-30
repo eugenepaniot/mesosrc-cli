@@ -18,7 +18,6 @@ class MesosNodesController(ArgparseController):
 
         arguments = [
             (['--hostame'], dict(help='Hosts affected')),
-            (['--id'], dict(help='IDs affected')),
             (['--force'], dict(help='If set to false then the deployment is canceled and a new '
                                     'deployment is created to revert the changes of this deployment. Without '
                                     'concurrent deployments, this restores the configuration before this deployment. '
@@ -124,11 +123,12 @@ class MesosNodesController(ArgparseController):
     # http://mesos.apache.org/documentation/latest/operator-http-api/
     @expose(help="Shutdown the agent and send TASK_GONE_BY_OPERATOR updates for all the running tasks")
     def gone(self):
-        if self.app.pargs.id is None:
-            self.app.log.error("--id required argument for this action")
+        if self.app.pargs.hostame is None:
+            self.app.log.error("--hostame required argument")
             self.app.args.parse_args(['--help'])
 
-        for id in self.app.pargs.id.split(","):
+        for h in self.app.pargs.hostame.split(","):
+            id = self.app.mesos.getSlaveByHostname(h)['id']
             gone = {
                 "type": "MARK_AGENT_GONE",
                 "mark_agent_gone": {

@@ -5,9 +5,19 @@ class MesosMasterRequest(HTTPRequest):
     def getSlaves(self):
         return self.urlOpenJsonToObject("/slaves")
 
+    def getSlaveByHostname(self, hostname):
+        assert hostname, "hostname is required"
+
+        for s in self.getSlaves()['slaves']:
+            if s['hostname'] == hostname:
+                return s
+
     def getSlaveByID(self, id):
         assert id, "ID is required"
-        return self.urlOpenJsonToObject("/slaves?slave_id=%s" % id)
+
+        for s in self.getSlaves()['slaves']:
+            if s['id'] == id:
+                return s
 
     def getTasks(self):
         return self.urlOpenJsonToObject("/tasks")
